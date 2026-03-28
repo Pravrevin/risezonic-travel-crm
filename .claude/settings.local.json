@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cd /c/YouTube Content/Project/reckon-crm/reckon-crm-frontend)",
+      "Bash(npm install:*)",
+      "Bash(curl -s http://localhost:3002)"
+    ]
+  }
+}
