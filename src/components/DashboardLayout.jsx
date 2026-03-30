@@ -120,7 +120,7 @@ export default function DashboardLayout({ children, title, subtitle }) {
         {!collapsed && (
           <div className="overflow-hidden">
             <div className="font-black text-gray-900 text-[17px] leading-none tracking-tight">
-              Travel<span className="text-teal-500">CRM</span>
+              Risezonic
             </div>
             <div className="text-[10px] text-gray-400 font-medium mt-0.5 tracking-wide uppercase">Smart Travel Business</div>
           </div>

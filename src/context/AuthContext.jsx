@@ -18,9 +18,9 @@ export const AuthProvider = ({ children }) => {
   const login = async (email, password) => {
     // Demo credentials
     const demoUsers = [
-      { id: 1, name: 'Admin User', email: 'admin@travelcrm.com', role: 'Admin', avatar: 'AU' },
-      { id: 2, name: 'Sarah Johnson', email: 'sarah@travelcrm.com', role: 'Manager', avatar: 'SJ' },
-      { id: 3, name: 'Agent Demo', email: 'demo@travelcrm.com', role: 'Agent', avatar: 'AD' },
+      { id: 1, name: 'Admin User', email: 'admin@risezonic.com', role: 'Admin', avatar: 'AU' },
+      { id: 2, name: 'Sarah Johnson', email: 'sarah@risezonic.com', role: 'Manager', avatar: 'SJ' },
+      { id: 3, name: 'Agent Demo', email: 'demo@risezonic.com', role: 'Agent', avatar: 'AD' },
     ];
 
     if (password === 'demo123') {

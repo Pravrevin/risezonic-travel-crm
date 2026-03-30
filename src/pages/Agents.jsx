@@ -31,7 +31,7 @@ const ic = {
 
 const agents = [
   {
-    id: 1, name: 'Sarah Johnson', avatar: 'SJ', role: 'Senior Agent', email: 'sarah@travelcrm.com', phone: '+1 555-0101',
+    id: 1, name: 'Sarah Johnson', avatar: 'SJ', role: 'Senior Agent', email: 'sarah@risezonic.com', phone: '+1 555-0101',
     calls: 148, bookings: 32, revenue: '$42,600', conversion: '72%', rating: 4.8, status: 'Online', targets: 85,
     // Login Details
     firstLogin: '08:02 AM', lastLogout: '07:48 PM', totalLoginTime: '11h 46m', loginCount: 1, daysActive: 22,
@@ -53,7 +53,7 @@ const agents = [
     conversionNum: 72, avgBookingNum: 1331, qualityNum: 91,
   },
   {
-    id: 2, name: 'Mike Roberts', avatar: 'MR', role: 'Agent', email: 'mike@travelcrm.com', phone: '+1 555-0102',
+    id: 2, name: 'Mike Roberts', avatar: 'MR', role: 'Agent', email: 'mike@risezonic.com', phone: '+1 555-0102',
     calls: 112, bookings: 21, revenue: '$28,400', conversion: '61%', rating: 4.5, status: 'Online', targets: 68,
     firstLogin: '08:15 AM', lastLogout: '06:55 PM', totalLoginTime: '10h 40m', loginCount: 1, daysActive: 20,
     callsAnswered: 105, callsMissed: 7, answerRate: '94%', avgCallScore: 78, qualityRating: 'Good',
@@ -68,7 +68,7 @@ const agents = [
     conversionNum: 61, avgBookingNum: 1352, qualityNum: 78,
   },
   {
-    id: 3, name: 'Tom Keller', avatar: 'TK', role: 'Agent', email: 'tom@travelcrm.com', phone: '+1 555-0103',
+    id: 3, name: 'Tom Keller', avatar: 'TK', role: 'Agent', email: 'tom@risezonic.com', phone: '+1 555-0103',
     calls: 98, bookings: 18, revenue: '$23,100', conversion: '58%', rating: 4.3, status: 'Break', targets: 60,
     firstLogin: '08:30 AM', lastLogout: '—', totalLoginTime: '9h 12m', loginCount: 1, daysActive: 19,
     callsAnswered: 90, callsMissed: 8, answerRate: '92%', avgCallScore: 74, qualityRating: 'Average',
@@ -83,7 +83,7 @@ const agents = [
     conversionNum: 58, avgBookingNum: 1283, qualityNum: 74,
   },
   {
-    id: 4, name: 'Emma Wilson', avatar: 'EW', role: 'Junior Agent', email: 'emma@travelcrm.com', phone: '+1 555-0104',
+    id: 4, name: 'Emma Wilson', avatar: 'EW', role: 'Junior Agent', email: 'emma@risezonic.com', phone: '+1 555-0104',
     calls: 74, bookings: 12, revenue: '$16,800', conversion: '52%', rating: 4.1, status: 'Online', targets: 45,
     firstLogin: '09:00 AM', lastLogout: '—', totalLoginTime: '7h 32m', loginCount: 1, daysActive: 15,
     callsAnswered: 68, callsMissed: 6, answerRate: '92%', avgCallScore: 70, qualityRating: 'Average',
@@ -98,7 +98,7 @@ const agents = [
     conversionNum: 52, avgBookingNum: 1400, qualityNum: 70,
   },
   {
-    id: 5, name: 'Alex Chen', avatar: 'AC', role: 'Agent', email: 'alex@travelcrm.com', phone: '+1 555-0105',
+    id: 5, name: 'Alex Chen', avatar: 'AC', role: 'Agent', email: 'alex@risezonic.com', phone: '+1 555-0105',
     calls: 105, bookings: 19, revenue: '$25,300', conversion: '64%', rating: 4.4, status: 'Offline', targets: 62,
     firstLogin: '08:10 AM', lastLogout: '05:30 PM', totalLoginTime: '9h 20m', loginCount: 1, daysActive: 21,
     callsAnswered: 99, callsMissed: 6, answerRate: '94%', avgCallScore: 82, qualityRating: 'Good',

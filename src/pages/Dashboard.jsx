@@ -359,7 +359,7 @@ export default function Dashboard() {
                 </div>
                 <div>
                   <div className="text-white font-bold text-sm">AI Assistant</div>
-                  <div className="text-purple-300 text-xs">TravelCRM Intelligence</div>
+                  <div className="text-purple-300 text-xs">Risezonic Intelligence</div>
                 </div>
               </div>
               <button onClick={() => setAiOpen(false)}

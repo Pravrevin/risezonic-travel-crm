@@ -18,7 +18,7 @@ const ic = {
 };
 
 export default function LoginPage() {
-  const [email, setEmail] = useState('admin@travelcrm.com');
+  const [email, setEmail] = useState('admin@risezonic.com');
   const [password, setPassword] = useState('demo123');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -50,7 +50,7 @@ export default function LoginPage() {
           <div className="w-20 h-20 bg-white/20 backdrop-blur-sm border border-white/30 rounded-3xl flex items-center justify-center mx-auto mb-8 animate-float shadow-2xl">
             <Sv d={ic.plane} size={38} color="white" sw={1.5} />
           </div>
-          <h1 className="text-4xl font-black mb-4">Welcome Back to<br /><span className="text-accent-300">TravelCRM</span></h1>
+          <h1 className="text-4xl font-black mb-4">Welcome Back to<br /><span className="text-accent-300">Risezonic CRM</span></h1>
           <p className="text-blue-200 text-lg mb-10">The smartest way to manage your travel business — leads, calls, bookings, and agents all in one place.</p>
 
           <div className="grid grid-cols-2 gap-4 text-left">
@@ -77,7 +77,7 @@ export default function LoginPage() {
             <div className="w-10 h-10 bg-gradient-to-br from-primary-700 to-accent-500 rounded-xl flex items-center justify-center">
               <Sv d={ic.plane} size={18} color="white" sw={1.6} />
             </div>
-            <span className="text-gray-800 font-bold text-xl">Travel<span className="text-accent-600">CRM</span></span>
+            <span className="text-gray-800 font-bold text-xl">Risezonic <span className="text-accent-600">CRM</span></span>
           </div>
 
           <div className="card p-8 shadow-xl">
@@ -98,7 +98,7 @@ export default function LoginPage() {
                 <span className="badge bg-primary-100 text-primary-700">Try it free</span>
               </div>
               <div className="text-xs text-gray-500 space-y-1">
-                <div><span className="font-medium">Email:</span> admin@travelcrm.com</div>
+                <div><span className="font-medium">Email:</span> admin@risezonic.com</div>
                 <div><span className="font-medium">Password:</span> demo123</div>
               </div>
             </div>

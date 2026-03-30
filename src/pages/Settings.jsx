@@ -10,10 +10,10 @@ const Sv = ({ d, size = 20, color = 'currentColor', sw = 1.8 }) => (
 const tabs = ['General', 'Users & Roles', 'Integrations', 'Lead Assignment', 'Notifications'];
 
 const users = [
-  { name: 'Sarah Johnson', email: 'sarah@travelcrm.com', role: 'Senior Agent', status: 'Active', avatar: 'SJ' },
-  { name: 'Mike Roberts', email: 'mike@travelcrm.com', role: 'Agent', status: 'Active', avatar: 'MR' },
-  { name: 'Tom Keller', email: 'tom@travelcrm.com', role: 'Agent', status: 'Active', avatar: 'TK' },
-  { name: 'Admin User', email: 'admin@travelcrm.com', role: 'Admin', status: 'Active', avatar: 'AU' },
+  { name: 'Sarah Johnson', email: 'sarah@risezonic.com', role: 'Senior Agent', status: 'Active', avatar: 'SJ' },
+  { name: 'Mike Roberts', email: 'mike@risezonic.com', role: 'Agent', status: 'Active', avatar: 'MR' },
+  { name: 'Tom Keller', email: 'tom@risezonic.com', role: 'Agent', status: 'Active', avatar: 'TK' },
+  { name: 'Admin User', email: 'admin@risezonic.com', role: 'Admin', status: 'Active', avatar: 'AU' },
 ];
 
 const integrations = [

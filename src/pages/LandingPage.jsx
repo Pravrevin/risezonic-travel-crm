@@ -67,7 +67,7 @@ const destinations = [
 ];
 
 const stats = [
-  { value: '500+', label: 'Travel Agencies', sub: 'Trust TravelCRM daily' },
+  { value: '500+', label: 'Travel Agencies', sub: 'Trust Risezonic CRM daily' },
   { value: '98%', label: 'Lead Response', sub: 'Average response rate' },
   { value: '$2.4M', label: 'Revenue Tracked', sub: 'Monthly across agencies' },
   { value: '40%', label: 'Less Admin Work', sub: 'Saved by automation' },
@@ -184,7 +184,7 @@ export default function LandingPage() {
               <Icon d={icons.plane} size={16} stroke="white" strokeWidth={1.5} />
             </div>
             <span className={`font-black text-xl tracking-tight transition-colors duration-300 ${navScrolled ? 'text-gray-900' : 'text-white'}`}>
-              Travel<span style={{ color: '#2dd4bf' }}>CRM</span>
+              Risezonic
             </span>
           </div>
 
@@ -388,7 +388,7 @@ export default function LandingPage() {
               <span className="text-teal-600 font-semibold text-sm uppercase tracking-widest">Live data</span>
             </div>
             <h2 className="text-4xl font-black text-gray-900">Top Destinations Being Managed</h2>
-            <p className="text-gray-500 mt-3 max-w-xl">Real-time view of the destinations your clients are booking most through TravelCRM agencies.</p>
+            <p className="text-gray-500 mt-3 max-w-xl">Real-time view of the destinations your clients are booking most through Risezonic CRM agencies.</p>
           </div>
 
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
@@ -480,7 +480,7 @@ export default function LandingPage() {
               <span className="text-violet-600 font-semibold text-sm uppercase tracking-widest">Workflow</span>
             </div>
             <h2 className="text-4xl font-black text-gray-900 mb-3">From First Call to Loyal Customer</h2>
-            <p className="text-gray-500 max-w-lg">Four steps that summarise how TravelCRM transforms your sales process.</p>
+            <p className="text-gray-500 max-w-lg">Four steps that summarise how Risezonic CRM transforms your sales process.</p>
           </div>
 
           <div className="grid lg:grid-cols-2 gap-14 items-center">
@@ -516,7 +516,7 @@ export default function LandingPage() {
                       {['#ef4444','#f59e0b','#22c55e'].map(c => <div key={c} className="w-2.5 h-2.5 rounded-full" style={{ background: c }} />)}
                     </div>
                     <div className="flex-1 mx-4 h-5 bg-white rounded border border-gray-200 flex items-center px-3">
-                      <span className="text-gray-400 text-xs">travelcrm.app/dashboard</span>
+                      <span className="text-gray-400 text-xs">risezonic.app/dashboard</span>
                     </div>
                   </div>
                   {/* Dashboard mockup */}
@@ -638,7 +638,7 @@ export default function LandingPage() {
               <Icon d={icons.arrow} size={20} stroke="white" className="group-hover:translate-x-1 transition-transform duration-200" />
             </Link>
             <div className="mt-6 text-gray-400 text-sm">
-              Login: <span className="font-semibold text-gray-700">admin@travelcrm.com</span> &nbsp;/&nbsp; <span className="font-semibold text-gray-700">demo123</span>
+              Login: <span className="font-semibold text-gray-700">admin@risezonic.com</span> &nbsp;/&nbsp; <span className="font-semibold text-gray-700">demo123</span>
             </div>
           </div>
         </div>
@@ -653,7 +653,7 @@ export default function LandingPage() {
                 <Icon d={icons.plane} size={16} stroke="white" strokeWidth={1.5} />
               </div>
               <div>
-                <div className="text-white font-black text-lg">Travel<span style={{ color: '#2dd4bf' }}>CRM</span></div>
+                <div className="text-white font-black text-lg">Risezonic</div>
                 <div className="text-gray-600 text-xs">Smart Travel Business Management</div>
               </div>
             </div>
@@ -662,7 +662,7 @@ export default function LandingPage() {
                 <span key={m.title} className="hover:text-white cursor-pointer transition-colors duration-200">{m.title}</span>
               ))}
             </div>
-            <div className="text-gray-600 text-sm">© 2026 TravelCRM. All rights reserved.</div>
+            <div className="text-gray-600 text-sm">© 2026 Risezonic CRM. All rights reserved.</div>
           </div>
         </div>
       </footer>
