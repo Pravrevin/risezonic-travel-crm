@@ -1,5 +1,8 @@
 import { useState } from 'react';
 import DashboardLayout from '../components/DashboardLayout';
+import { followupStore } from '../lib/followups';
+import { postToSheet } from '../lib/sheetClient';
+import { useStoreList } from '../hooks/useStore';
 
 const Sv = ({ d, size = 16, color = 'currentColor', sw = 1.8 }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round">
@@ -17,22 +20,19 @@ const ic = {
   user: ['M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2','M12 11a4 4 0 100-8 4 4 0 000 8z'],
 };
 
-const followups = [
-  { id: 1, lead: 'Raj Kumar', phone: '+91 98765 43210', destination: 'Dubai Package', due: '2026-03-27 02:00 PM', priority: 'Urgent', agent: 'Sarah J.', notes: 'Waiting for quote confirmation', status: 'Pending' },
-  { id: 2, lead: 'Priya Singh', phone: '+91 87654 32109', destination: 'Maldives 5N', due: '2026-03-27 04:30 PM', priority: 'High', agent: 'Mike R.', notes: 'Send revised itinerary', status: 'Pending' },
-  { id: 3, lead: 'John Davis', phone: '+1 555 0134', destination: 'Europe Tour', due: '2026-03-28 10:00 AM', priority: 'Normal', agent: 'Sarah J.', notes: 'Payment confirmation follow-up', status: 'Scheduled' },
-  { id: 4, lead: 'Aisha Khan', phone: '+91 76543 21098', destination: 'Singapore', due: '2026-03-27 11:00 AM', priority: 'Urgent', agent: 'Tom K.', notes: 'Hot lead — needs immediate attention', status: 'Overdue' },
-  { id: 5, lead: 'Mike Thompson', phone: '+1 555 0198', destination: 'Thailand 7N', due: '2026-03-29 02:00 PM', priority: 'Low', agent: 'Mike R.', notes: 'Send hotel options', status: 'Scheduled' },
-];
-
 const priorityColors = { Urgent: 'bg-red-100 text-red-700', High: 'bg-orange-100 text-orange-700', Normal: 'bg-blue-100 text-blue-700', Low: 'bg-gray-100 text-gray-600' };
 const statusColors = { Pending: 'bg-yellow-100 text-yellow-700', Scheduled: 'bg-blue-100 text-blue-700', Overdue: 'bg-red-100 text-red-700', Done: 'bg-green-100 text-green-700' };
 
 export default function Followups() {
-  const [data, setData] = useState(followups);
+  const data = useStoreList(followupStore);
   const [filter, setFilter] = useState('All');
 
-  const markDone = (id) => setData(d => d.map(f => f.id === id ? { ...f, status: 'Done' } : f));
+  const markDone = async (id) => {
+    const updated = followupStore.update(id, { status: 'Done' });
+    const result = await postToSheet('followups', updated);
+    if (result === 'sent') followupStore.markSynced(id);
+    else followupStore.markUnsynced(id);
+  };
   const filtered = filter === 'All' ? data : data.filter(f => f.status === filter || f.priority === filter);
 
   return (

@@ -1,7 +1,17 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import DashboardLayout from '../components/DashboardLayout';
 import { useAuth } from '../context/AuthContext';
+import { useStoreList } from '../hooks/useStore';
+import { leadStore } from '../lib/leads';
+import { callStore } from '../lib/calls';
+import { bookingStore } from '../lib/bookings';
+import { followupStore } from '../lib/followups';
+import { DISPOSITION_COLORS } from '../constants/dispositions';
+import {
+  isToday, isThisMonth, withinLastDays, relativeTime,
+  topByCount, topAgentByRevenue, dailyConversionSeries,
+} from '../lib/dashboardStats';
 
 // ── SVG icons ────────────────────────────────────────────────────────────────
 const Svg = ({ d, size = 20, color = 'currentColor', sw = 1.7, fill = 'none', className = '' }) => (
@@ -18,74 +28,50 @@ const ic = {
   revenue:  ['M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6'],
   followup: ['M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9', 'M13.73 21a2 2 0 01-3.46 0'],
   trending: ['M23 6l-9.5 9.5-5-5L1 18'],
-  reports:  ['M18 20V10', 'M12 20V4', 'M6 20v-6'],
-  agents:   ['M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2', 'M23 21v-2a4 4 0 00-3-3.87', 'M16 3.13a4 4 0 010 7.75', 'M9 11a4 4 0 100-8 4 4 0 000 8z'],
-  missed:   ['M10.68 13.31a16 16 0 003.41 2.6l1.27-1.27a2 2 0 012.11-.45c.907.34 1.85.573 2.81.7A2 2 0 0122 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 1 1 0 01-.29-.21M1 1l22 22'],
+  warn:     ['M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z', 'M12 9v4', 'M12 17h.01'],
   send:     ['M22 2L11 13', 'M22 2L15 22 11 13 2 9l20-7z'],
   sparkles: ['M12 3l1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5L12 3z', 'M5 3v4', 'M3 5h4', 'M19 17v4', 'M17 19h4'],
   arrowright: 'M5 12h14M12 5l7 7-7 7',
   close:    ['M18 6L6 18', 'M6 6l12 12'],
-  inbound:  ['M5 12h14', 'M12 19l7-7-7-7'],
-  outbound: ['M19 12H5', 'M12 5l-7 7 7 7'],
   map:      ['M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z', 'M12 7a3 3 0 100 6 3 3 0 000-6z'],
 };
-
-// ── Data ─────────────────────────────────────────────────────────────────────
-const statCards = [
-  { label: 'Total Leads',      value: '1,284', change: '+12%', up: true,  icon: ic.leads,    accent: '#0ea5e9', bg: 'bg-sky-50',     border: 'border-sky-100',    link: '/leads' },
-  { label: 'Active Calls',     value: '24',    change: '+5',   up: true,  icon: ic.calls,    accent: '#10b981', bg: 'bg-emerald-50', border: 'border-emerald-100',link: '/calls' },
-  { label: 'Bookings Today',   value: '38',    change: '+8%',  up: true,  icon: ic.bookings, accent: '#8b5cf6', bg: 'bg-violet-50',  border: 'border-violet-100', link: '/bookings' },
-  { label: 'Revenue MTD',      value: '$84K',  change: '+18%', up: true,  icon: ic.revenue,  accent: '#f59e0b', bg: 'bg-amber-50',   border: 'border-amber-100',  link: '/reports' },
-  { label: 'Follow-ups Due',   value: '67',    change: '12 urgent', up: false, icon: ic.followup, accent: '#ef4444', bg: 'bg-red-50',border: 'border-red-100',   link: '/followups' },
-  { label: 'Conversion Rate',  value: '68.4%', change: '+4.2%',up: true,  icon: ic.trending, accent: '#14b8a6', bg: 'bg-teal-50',   border: 'border-teal-100',   link: '/reports' },
-  { label: 'Active Agents',    value: '18',    change: '2 on break', up: null, icon: ic.agents, accent: '#6366f1', bg: 'bg-indigo-50', border: 'border-indigo-100',link: '/agents' },
-  { label: 'Missed Calls',     value: '9',     change: '-3 vs yesterday', up: true, icon: ic.missed, accent: '#f97316', bg: 'bg-orange-50', border: 'border-orange-100', link: '/calls' },
-];
 
 const quickActions = [
   { label: 'Add Lead',     path: '/leads',    icon: ic.leads,    from: '#0ea5e9', to: '#0353a1' },
   { label: 'New Booking',  path: '/bookings', icon: ic.bookings, from: '#8b5cf6', to: '#6d28d9' },
   { label: 'Calls Log',    path: '/calls',    icon: ic.calls,    from: '#10b981', to: '#059669' },
-  { label: 'View Reports', path: '/reports',  icon: ic.reports,  from: '#f59e0b', to: '#d97706' },
   { label: 'Follow-ups',   path: '/followups',icon: ic.followup, from: '#ef4444', to: '#dc2626' },
-  { label: 'Agent Stats',  path: '/agents',   icon: ic.agents,   from: '#6366f1', to: '#4f46e5' },
-];
-
-const recentLeads = [
-  { name: 'Raj Kumar',      dest: 'Dubai Package',   status: 'New',       time: '2m ago',  initials: 'RK', color: '#0ea5e9' },
-  { name: 'Priya Singh',    dest: 'Maldives 5 nights', status: 'Follow-up',time: '15m ago', initials: 'PS', color: '#f59e0b' },
-  { name: 'John Davis',     dest: 'Europe Tour 10D', status: 'Booked',    time: '32m ago', initials: 'JD', color: '#10b981' },
-  { name: 'Aisha Khan',     dest: 'Singapore Trip',  status: 'Hot Lead',  time: '1h ago',  initials: 'AK', color: '#ef4444' },
-  { name: 'Mike Thompson',  dest: 'Thailand 7 nights', status: 'New',     time: '2h ago',  initials: 'MT', color: '#8b5cf6' },
-];
-
-const recentCalls = [
-  { name: 'Raj Kumar',  duration: '4:32', type: 'Inbound',  agent: 'Sarah J.', status: 'Completed' },
-  { name: 'Priya Singh',duration: '2:18', type: 'Outbound', agent: 'Mike R.',  status: 'Completed' },
-  { name: 'Unknown',    duration: '—',    type: 'Inbound',  agent: '—',        status: 'Missed' },
-  { name: 'John Davis', duration: '6:45', type: 'Outbound', agent: 'Sarah J.', status: 'Completed' },
 ];
 
 const statusStyle = {
-  'New':       'bg-sky-100 text-sky-700',
+  'New': 'bg-sky-100 text-sky-700',
   'Follow-up': 'bg-amber-100 text-amber-700',
-  'Booked':    'bg-emerald-100 text-emerald-700',
-  'Hot Lead':  'bg-red-100 text-red-700',
+  'Booked': 'bg-emerald-100 text-emerald-700',
+  'Hot Lead': 'bg-red-100 text-red-700',
+  'Contacted': 'bg-purple-100 text-purple-700',
+  'Interested': 'bg-orange-100 text-orange-700',
+  'Quote Sent': 'bg-teal-100 text-teal-700',
+  'Lost': 'bg-red-100 text-red-500',
+  'Cold': 'bg-gray-100 text-gray-600',
 };
 
-const chartData = [52, 68, 44, 82, 62, 76, 58, 90, 70, 64, 84, 88, 66, 80];
-const chartLabels = ['Mar 14','15','16','17','18','19','20','21','22','23','24','25','26','Mar 27'];
-
-// ── AI suggestion chips ───────────────────────────────────────────────────────
-const suggestions = [
-  'How many leads today?',
-  'Top agent this week?',
-  'Show missed calls',
-  'Revenue vs target',
-];
+const AVATAR_COLORS = ['#0ea5e9', '#f59e0b', '#10b981', '#ef4444', '#8b5cf6', '#14b8a6'];
+function colorFor(seed) {
+  let h = 0;
+  for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) >>> 0;
+  return AVATAR_COLORS[h % AVATAR_COLORS.length];
+}
+function initialsFor(name) {
+  return (name || '?').trim().split(/\s+/).slice(0, 2).map((n) => n[0]).join('').toUpperCase();
+}
 
 export default function Dashboard() {
   const { user } = useAuth();
+  const leads = useStoreList(leadStore);
+  const calls = useStoreList(callStore);
+  const bookings = useStoreList(bookingStore);
+  const followups = useStoreList(followupStore);
+
   const [chartPeriod, setChartPeriod] = useState('2W');
   const [aiOpen, setAiOpen] = useState(false);
   const [aiMessages, setAiMessages] = useState([
@@ -94,23 +80,70 @@ export default function Dashboard() {
   const [aiInput, setAiInput] = useState('');
   const [aiTyping, setAiTyping] = useState(false);
 
+  // ── Derived, real numbers ──────────────────────────────────────────────────
+  const bookedLeadsCount = leads.filter((l) => l.status === 'Booked').length;
+  const conversionRate = leads.length ? (bookedLeadsCount / leads.length) * 100 : 0;
+  const openFollowups = followups.filter((f) => f.status !== 'Done');
+  const urgentFollowups = openFollowups.filter((f) => f.priority === 'Urgent').length;
+  const cancelations = calls.filter((c) => c.disposition === 'Cancelation').length;
+  const totalRevenue = bookings.reduce((sum, b) => sum + (parseFloat(b.grandTotal) || 0), 0);
+  const revenueMTD = bookings.filter((b) => isThisMonth(b.createdAt)).reduce((sum, b) => sum + (parseFloat(b.grandTotal) || 0), 0);
+  const bookingsToday = bookings.filter((b) => isToday(b.createdAt)).length;
+  const callsToday = calls.filter((c) => isToday(c.createdAt)).length;
+  const leadsThisWeek = leads.filter((l) => withinLastDays(l.date || l.createdAt, 7)).length;
+
+  const statCards = [
+    { label: 'Total Leads', value: leads.length.toLocaleString(), change: `${leadsThisWeek} this week`, icon: ic.leads, accent: '#0ea5e9', bg: 'bg-sky-50', border: 'border-sky-100', link: '/leads' },
+    { label: 'Calls Today', value: String(callsToday), change: `${calls.length} total logged`, icon: ic.calls, accent: '#10b981', bg: 'bg-emerald-50', border: 'border-emerald-100', link: '/calls' },
+    { label: 'Bookings Today', value: String(bookingsToday), change: `${bookings.length} total`, icon: ic.bookings, accent: '#8b5cf6', bg: 'bg-violet-50', border: 'border-violet-100', link: '/bookings' },
+    { label: 'Revenue MTD', value: `$${revenueMTD.toLocaleString(undefined, { maximumFractionDigits: 0 })}`, change: `$${totalRevenue.toLocaleString(undefined, { maximumFractionDigits: 0 })} all time`, icon: ic.revenue, accent: '#f59e0b', bg: 'bg-amber-50', border: 'border-amber-100', link: '/bookings' },
+    { label: 'Follow-ups Due', value: String(openFollowups.length), change: `${urgentFollowups} urgent`, icon: ic.followup, accent: '#ef4444', bg: 'bg-red-50', border: 'border-red-100', link: '/followups' },
+    { label: 'Conversion Rate', value: `${conversionRate.toFixed(1)}%`, change: `${bookedLeadsCount}/${leads.length} booked`, icon: ic.trending, accent: '#14b8a6', bg: 'bg-teal-50', border: 'border-teal-100', link: '/leads' },
+    { label: 'Cancelations', value: String(cancelations), change: `${calls.length ? Math.round((cancelations / calls.length) * 100) : 0}% of calls`, icon: ic.warn, accent: '#f97316', bg: 'bg-orange-50', border: 'border-orange-100', link: '/calls' },
+  ];
+
+  const chartSeries = useMemo(() => dailyConversionSeries(leads, chartPeriod === '1W' ? 7 : chartPeriod === '1M' ? 30 : 14), [leads, chartPeriod]);
+  const chartAvg = chartSeries.length ? chartSeries.reduce((s, d) => s + d.pct, 0) / chartSeries.length : 0;
+
+  const recentLeads = useMemo(
+    () => [...leads].sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0)).slice(0, 5),
+    [leads]
+  );
+  const recentCalls = useMemo(
+    () => [...calls].sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0)).slice(0, 4),
+    [calls]
+  );
+
+  const topAgent = topAgentByRevenue(bookings);
+  const topSource = topByCount(leads, (l) => l.source);
+  const topDestination = topByCount(leads, (l) => l.destination);
+  const topDisposition = topByCount(calls, (c) => c.disposition);
+
+  const performanceBand = [
+    { label: 'Top Agent', value: topAgent ? topAgent.key : 'No bookings yet', sub: topAgent ? `${topAgent.value.count} booking${topAgent.value.count === 1 ? '' : 's'} · $${topAgent.value.revenue.toLocaleString(undefined, { maximumFractionDigits: 0 })}` : '—', accent: '#0ea5e9' },
+    { label: 'Top Lead Source', value: topSource ? topSource.key : 'No leads yet', sub: topSource ? `${topSource.count} lead${topSource.count === 1 ? '' : 's'}` : '—', accent: '#8b5cf6' },
+    { label: 'Top Destination', value: topDestination ? topDestination.key : 'No leads yet', sub: topDestination ? `${topDestination.count} lead${topDestination.count === 1 ? '' : 's'}` : '—', accent: '#f59e0b' },
+    { label: 'Top Disposition', value: topDisposition ? topDisposition.key : 'No calls yet', sub: topDisposition ? `${topDisposition.count} call${topDisposition.count === 1 ? '' : 's'}` : '—', accent: '#10b981' },
+  ];
+
   const sendAi = (text) => {
     const msg = (text || aiInput).trim();
     if (!msg) return;
-    setAiMessages(m => [...m, { role: 'user', text: msg }]);
+    setAiMessages((m) => [...m, { role: 'user', text: msg }]);
     setAiInput('');
     setAiTyping(true);
     setTimeout(() => {
+      // Grounded in the live stores, not scripted numbers — matches whatever is actually in the sheet right now.
       const replies = [
-        'You have 1,284 leads this month — conversion rate sits at 68.4%, up 4.2% from last month.',
-        'Sarah Johnson leads the board with 32 bookings and $42.6K revenue this month.',
-        'There are 9 missed calls today. I recommend scheduling auto-callbacks within 10 minutes.',
-        'Revenue MTD is $84K, up 18% vs last month. Europe Tour packages are top sellers.',
-        '67 follow-ups are due — 12 marked urgent. Prioritise hot leads for best conversion.',
+        `You have ${leads.length} lead${leads.length === 1 ? '' : 's'} on record — conversion rate is ${conversionRate.toFixed(1)}%.`,
+        topAgent ? `${topAgent.key} leads the board with ${topAgent.value.count} booking${topAgent.value.count === 1 ? '' : 's'} and $${topAgent.value.revenue.toLocaleString(undefined, { maximumFractionDigits: 0 })} revenue.` : 'No bookings recorded yet to rank agents by.',
+        `There ${cancelations === 1 ? 'is' : 'are'} ${cancelations} cancelation${cancelations === 1 ? '' : 's'} logged, and ${openFollowups.length} follow-up${openFollowups.length === 1 ? '' : 's'} still open.`,
+        `Revenue this month is $${revenueMTD.toLocaleString(undefined, { maximumFractionDigits: 0 })} across ${bookings.length} total booking${bookings.length === 1 ? '' : 's'}.`,
+        `${openFollowups.length} follow-up${openFollowups.length === 1 ? '' : 's'} ${openFollowups.length === 1 ? 'is' : 'are'} due${urgentFollowups ? `, ${urgentFollowups} marked urgent` : ''}.`,
       ];
       setAiTyping(false);
-      setAiMessages(m => [...m, { role: 'assistant', text: replies[Math.floor(Math.random() * replies.length)] }]);
-    }, 1600);
+      setAiMessages((m) => [...m, { role: 'assistant', text: replies[Math.floor(Math.random() * replies.length)] }]);
+    }, 1200);
   };
 
   const hour = new Date().getHours();
@@ -131,10 +164,7 @@ export default function Dashboard() {
                 style={{ background: `${s.accent}18` }}>
                 <Svg d={s.icon} size={17} color={s.accent} />
               </div>
-              <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full leading-none ${
-                s.up === true ? 'bg-emerald-100 text-emerald-700' :
-                s.up === false ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-600'
-              }`}>{s.change}</span>
+              <span className="text-[11px] font-bold px-2 py-0.5 rounded-full leading-none bg-gray-100 text-gray-600">{s.change}</span>
             </div>
             <div className="text-[22px] font-black text-gray-900 leading-none">{s.value}</div>
             <div className="text-[11px] text-gray-500 font-medium mt-1">{s.label}</div>
@@ -150,7 +180,7 @@ export default function Dashboard() {
           <div className="flex items-center justify-between mb-5">
             <div>
               <h3 className="font-bold text-gray-800 text-[15px]">Lead Conversion Trend</h3>
-              <p className="text-xs text-gray-400 mt-0.5">Daily conversion % — last 14 days</p>
+              <p className="text-xs text-gray-400 mt-0.5">Daily % of leads marked Booked</p>
             </div>
             <div className="flex gap-1.5">
               {['1W', '2W', '1M'].map(t => (
@@ -180,47 +210,48 @@ export default function Dashboard() {
                   <stop offset="100%" stopColor="#14b8a6" />
                 </linearGradient>
               </defs>
-              {/* Grid lines */}
               {[0, 33, 66, 100].map(y => (
                 <line key={y} x1="0" y1={y * 1.1 + 5} x2="600" y2={y * 1.1 + 5}
                   stroke="#f1f5f9" strokeWidth="1" />
               ))}
-              {/* Area fill */}
-              <path
-                d={`M ${chartData.map((v, i) => `${i * (600 / (chartData.length - 1))},${110 - v * 1.1}`).join(' L ')} L 600,115 L 0,115 Z`}
-                fill="url(#chartFill)" />
-              {/* Line */}
-              <path
-                d={`M ${chartData.map((v, i) => `${i * (600 / (chartData.length - 1))},${110 - v * 1.1}`).join(' L ')}`}
-                fill="none" stroke="url(#chartLine)" strokeWidth="2.5" strokeLinejoin="round" />
-              {/* Dots */}
-              {chartData.map((v, i) => (
-                <circle key={i}
-                  cx={i * (600 / (chartData.length - 1))}
-                  cy={110 - v * 1.1}
-                  r="4" fill="white" stroke="#0ea5e9" strokeWidth="2" className="cursor-pointer" />
-              ))}
+              {chartSeries.length > 1 && (
+                <>
+                  <path
+                    d={`M ${chartSeries.map((v, i) => `${i * (600 / (chartSeries.length - 1))},${110 - v.pct * 1.1}`).join(' L ')} L 600,115 L 0,115 Z`}
+                    fill="url(#chartFill)" />
+                  <path
+                    d={`M ${chartSeries.map((v, i) => `${i * (600 / (chartSeries.length - 1))},${110 - v.pct * 1.1}`).join(' L ')}`}
+                    fill="none" stroke="url(#chartLine)" strokeWidth="2.5" strokeLinejoin="round" />
+                  {chartSeries.map((v, i) => (
+                    <circle key={i}
+                      cx={i * (600 / (chartSeries.length - 1))}
+                      cy={110 - v.pct * 1.1}
+                      r="4" fill="white" stroke="#0ea5e9" strokeWidth="2" className="cursor-pointer">
+                      <title>{`${v.label}: ${v.pct}% (${v.total} lead${v.total === 1 ? '' : 's'})`}</title>
+                    </circle>
+                  ))}
+                </>
+              )}
             </svg>
           </div>
 
           <div className="flex justify-between text-[10px] text-gray-400 mt-1 px-0.5">
-            <span>{chartLabels[0]}</span>
-            <span>{chartLabels[Math.floor(chartLabels.length / 2)]}</span>
-            <span>{chartLabels[chartLabels.length - 1]}</span>
+            <span>{chartSeries[0]?.label}</span>
+            <span>{chartSeries[Math.floor(chartSeries.length / 2)]?.label}</span>
+            <span>{chartSeries[chartSeries.length - 1]?.label}</span>
           </div>
 
-          {/* Legend */}
           <div className="flex gap-5 mt-3 pt-3 border-t border-gray-100">
-            {[
-              { color: '#0ea5e9', label: 'Conversion Rate', val: '68.4%' },
-              { color: '#10b981', label: 'Avg. this period', val: '73.2%' },
-            ].map(l => (
-              <div key={l.label} className="flex items-center gap-2">
-                <div className="w-2.5 h-2.5 rounded-full" style={{ background: l.color }} />
-                <span className="text-xs text-gray-500">{l.label}</span>
-                <span className="text-xs font-bold text-gray-700">{l.val}</span>
-              </div>
-            ))}
+            <div className="flex items-center gap-2">
+              <div className="w-2.5 h-2.5 rounded-full" style={{ background: '#0ea5e9' }} />
+              <span className="text-xs text-gray-500">Overall Conversion</span>
+              <span className="text-xs font-bold text-gray-700">{conversionRate.toFixed(1)}%</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-2.5 h-2.5 rounded-full" style={{ background: '#10b981' }} />
+              <span className="text-xs text-gray-500">Avg. this period</span>
+              <span className="text-xs font-bold text-gray-700">{chartAvg.toFixed(1)}%</span>
+            </div>
           </div>
         </div>
 
@@ -240,7 +271,6 @@ export default function Dashboard() {
             ))}
           </div>
 
-          {/* AI button */}
           <button onClick={() => setAiOpen(true)}
             className="mt-3 w-full flex items-center gap-2.5 justify-center py-3 rounded-xl font-semibold text-sm text-white transition-all duration-200 hover:shadow-lg hover:scale-[1.02]"
             style={{ background: 'linear-gradient(135deg, #7c3aed, #6d28d9)' }}>
@@ -253,7 +283,6 @@ export default function Dashboard() {
       {/* ── RECENT LEADS + CALLS ── */}
       <div className="grid lg:grid-cols-2 gap-4 mb-4">
 
-        {/* Recent leads */}
         <div className="bg-white rounded-2xl border border-gray-200/80 p-5 shadow-sm">
           <div className="flex items-center justify-between mb-4">
             <h3 className="font-bold text-gray-800 text-[15px]">Recent Leads</h3>
@@ -262,29 +291,31 @@ export default function Dashboard() {
             </Link>
           </div>
           <div className="space-y-1">
-            {recentLeads.map((lead, i) => (
-              <div key={i} className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-gray-50 transition-colors cursor-pointer group">
+            {recentLeads.map((lead) => (
+              <div key={lead.id} className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-gray-50 transition-colors cursor-pointer group">
                 <div className="w-9 h-9 rounded-xl flex items-center justify-center font-bold text-[12px] text-white flex-shrink-0"
-                  style={{ background: `linear-gradient(135deg, ${lead.color}cc, ${lead.color})` }}>
-                  {lead.initials}
+                  style={{ background: `linear-gradient(135deg, ${colorFor(lead.id)}cc, ${colorFor(lead.id)})` }}>
+                  {initialsFor(lead.name)}
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="font-semibold text-gray-800 text-[13px] truncate">{lead.name}</div>
                   <div className="text-xs text-gray-400 flex items-center gap-1 truncate">
                     <Svg d={ic.map} size={10} color="#9ca3af" sw={2} />
-                    {lead.dest}
+                    {lead.destination || 'No destination set'}
                   </div>
                 </div>
                 <div className="flex flex-col items-end gap-1 flex-shrink-0">
-                  <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${statusStyle[lead.status]}`}>{lead.status}</span>
-                  <span className="text-[10px] text-gray-400">{lead.time}</span>
+                  <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${statusStyle[lead.status] || 'bg-gray-100 text-gray-600'}`}>{lead.status}</span>
+                  <span className="text-[10px] text-gray-400">{relativeTime(lead.createdAt)}</span>
                 </div>
               </div>
             ))}
+            {recentLeads.length === 0 && (
+              <div className="text-center py-8 text-sm text-gray-400">No leads yet</div>
+            )}
           </div>
         </div>
 
-        {/* Recent calls */}
         <div className="bg-white rounded-2xl border border-gray-200/80 p-5 shadow-sm">
           <div className="flex items-center justify-between mb-4">
             <h3 className="font-bold text-gray-800 text-[15px]">Recent Calls</h3>
@@ -293,48 +324,31 @@ export default function Dashboard() {
             </Link>
           </div>
           <div className="space-y-1">
-            {recentCalls.map((call, i) => {
-              const missed = call.status === 'Missed';
-              const inbound = call.type === 'Inbound';
-              return (
-                <div key={i} className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-gray-50 transition-colors">
-                  <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${
-                    missed ? 'bg-red-50' : inbound ? 'bg-emerald-50' : 'bg-sky-50'
-                  }`}>
-                    <Svg
-                      d={missed ? ic.missed : inbound ? ic.inbound : ic.outbound}
-                      size={16}
-                      color={missed ? '#ef4444' : inbound ? '#10b981' : '#0ea5e9'}
-                      sw={2}
-                    />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="font-semibold text-gray-800 text-[13px] truncate">{call.name}</div>
-                    <div className="text-xs text-gray-400">Agent: {call.agent}</div>
-                  </div>
-                  <div className="text-right flex-shrink-0">
-                    <div className={`text-[13px] font-bold ${missed ? 'text-red-500' : 'text-gray-700'}`}>
-                      {call.duration}
-                    </div>
-                    <div className={`text-[10px] font-medium ${
-                      missed ? 'text-red-400' : inbound ? 'text-emerald-500' : 'text-sky-500'
-                    }`}>{missed ? 'Missed' : call.type}</div>
-                  </div>
+            {recentCalls.map((call) => (
+              <div key={call.id} className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-gray-50 transition-colors">
+                <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 bg-sky-50">
+                  <Svg d={ic.calls} size={16} color="#0ea5e9" sw={2} />
                 </div>
-              );
-            })}
+                <div className="flex-1 min-w-0">
+                  <div className="font-semibold text-gray-800 text-[13px] truncate">{call.caller}</div>
+                  <div className="text-xs text-gray-400">Agent: {call.agent || '—'}</div>
+                </div>
+                <div className="text-right flex-shrink-0">
+                  <span className={`badge ${DISPOSITION_COLORS[call.disposition] || 'bg-gray-100 text-gray-600'}`}>{call.disposition}</span>
+                  <div className="text-[10px] text-gray-400 mt-1">{call.time}</div>
+                </div>
+              </div>
+            ))}
+            {recentCalls.length === 0 && (
+              <div className="text-center py-8 text-sm text-gray-400">No calls logged yet</div>
+            )}
           </div>
         </div>
       </div>
 
       {/* ── PERFORMANCE MINI BAND ── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        {[
-          { label: 'Top Agent',     value: 'Sarah Johnson', sub: '32 bookings · $42.6K', accent: '#0ea5e9' },
-          { label: 'Best Campaign', value: 'Dubai Summer',  sub: 'Google Ads · 284 leads',accent: '#8b5cf6' },
-          { label: 'Top Destination',value: 'Dubai',        sub: '68 bookings this month', accent: '#f59e0b' },
-          { label: 'Avg Call Time', value: '4m 18s',        sub: 'Up from 3m 52s last week',accent: '#10b981' },
-        ].map((p, i) => (
+        {performanceBand.map((p, i) => (
           <div key={i} className="bg-white rounded-2xl border border-gray-200/80 p-4 shadow-sm">
             <div className="text-[10px] font-bold uppercase tracking-widest mb-2" style={{ color: p.accent }}>{p.label}</div>
             <div className="font-black text-gray-900 text-[15px] mb-0.5 truncate">{p.value}</div>
@@ -350,7 +364,6 @@ export default function Dashboard() {
           <div className="fixed right-0 top-0 bottom-0 w-full sm:w-[380px] bg-white z-50 shadow-2xl flex flex-col"
             style={{ fontFamily: "'Inter', sans-serif" }}>
 
-            {/* Header */}
             <div className="p-4 flex items-center justify-between border-b border-gray-100"
               style={{ background: 'linear-gradient(135deg, #1e1b4b, #4c1d95)' }}>
               <div className="flex items-center gap-3">
@@ -368,7 +381,6 @@ export default function Dashboard() {
               </button>
             </div>
 
-            {/* Messages */}
             <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-gray-50">
               {aiMessages.map((m, i) => (
                 <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
@@ -404,9 +416,8 @@ export default function Dashboard() {
               )}
             </div>
 
-            {/* Suggestion chips */}
             <div className="px-4 py-2 flex gap-2 overflow-x-auto scrollbar-hide border-t border-gray-100 bg-white">
-              {suggestions.map(s => (
+              {['How many leads?', 'Top agent?', 'Cancelations?', 'Revenue this month?'].map(s => (
                 <button key={s} onClick={() => sendAi(s)}
                   className="flex-shrink-0 text-xs font-medium text-sky-600 bg-sky-50 hover:bg-sky-100 border border-sky-100 px-3 py-1.5 rounded-full transition-colors whitespace-nowrap">
                   {s}
@@ -414,7 +425,6 @@ export default function Dashboard() {
               ))}
             </div>
 
-            {/* Input */}
             <div className="p-4 border-t border-gray-100 bg-white">
               <div className="flex gap-2 items-center">
                 <input

@@ -1,5 +1,7 @@
+import { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { pullFromSheet } from './lib/sync';
 import LandingPage from './pages/LandingPage';
 import LoginPage from './pages/LoginPage';
 import Dashboard from './pages/Dashboard';
@@ -7,13 +9,6 @@ import Leads from './pages/Leads';
 import Calls from './pages/Calls';
 import Followups from './pages/Followups';
 import Bookings from './pages/Bookings';
-import Customers from './pages/Customers';
-import Marketing from './pages/Marketing';
-import Agents from './pages/Agents';
-import QualityMonitoring from './pages/QualityMonitoring';
-import Reports from './pages/Reports';
-import Automation from './pages/Automation';
-import Settings from './pages/Settings';
 
 const PrivateRoute = ({ children }) => {
   const { isAuthenticated, loading } = useAuth();
@@ -37,6 +32,16 @@ const PublicRoute = ({ children }) => {
 };
 
 const AppRoutes = () => {
+  const { isAuthenticated } = useAuth();
+
+  // Pull the register from the Google Sheet once signed in. localStorage is
+  // per-origin, so without this a fresh browser or teammate's machine would
+  // otherwise start empty even though the records exist in the sheet.
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    pullFromSheet();
+  }, [isAuthenticated]);
+
   return (
     <Routes>
       <Route path="/" element={<LandingPage />} />
@@ -46,13 +51,6 @@ const AppRoutes = () => {
       <Route path="/calls" element={<PrivateRoute><Calls /></PrivateRoute>} />
       <Route path="/followups" element={<PrivateRoute><Followups /></PrivateRoute>} />
       <Route path="/bookings" element={<PrivateRoute><Bookings /></PrivateRoute>} />
-      <Route path="/customers" element={<PrivateRoute><Customers /></PrivateRoute>} />
-      <Route path="/marketing" element={<PrivateRoute><Marketing /></PrivateRoute>} />
-      <Route path="/agents" element={<PrivateRoute><Agents /></PrivateRoute>} />
-      <Route path="/quality" element={<PrivateRoute><QualityMonitoring /></PrivateRoute>} />
-      <Route path="/reports" element={<PrivateRoute><Reports /></PrivateRoute>} />
-      <Route path="/automation" element={<PrivateRoute><Automation /></PrivateRoute>} />
-      <Route path="/settings" element={<PrivateRoute><Settings /></PrivateRoute>} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );

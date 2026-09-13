@@ -1,5 +1,9 @@
 import { useState } from 'react';
 import DashboardLayout from '../components/DashboardLayout';
+import { emptyLead, leadStore } from '../lib/leads';
+import { postToSheet } from '../lib/sheetClient';
+import { useStoreList } from '../hooks/useStore';
+import { useAuth } from '../context/AuthContext';
 
 const countryStates = {
   'India': ['Andhra Pradesh','Arunachal Pradesh','Assam','Bihar','Chhattisgarh','Goa','Gujarat','Haryana','Himachal Pradesh','Jharkhand','Karnataka','Kerala','Madhya Pradesh','Maharashtra','Manipur','Meghalaya','Mizoram','Nagaland','Odisha','Punjab','Rajasthan','Sikkim','Tamil Nadu','Telangana','Tripura','Uttar Pradesh','Uttarakhand','West Bengal','Delhi','Jammu & Kashmir','Ladakh'],
@@ -21,40 +25,6 @@ const countryStates = {
 };
 
 const countries = Object.keys(countryStates);
-
-const initialLeads = [
-  { id: 1, name: 'Raj Kumar', phone: '+91 98765 43210', email: 'raj@gmail.com', destination: 'Dubai Package', source: 'Google Ads', status: 'Hot Lead', stage: 'Hot', agent: 'Sarah J.', date: '2026-03-27', budget: '$2,500', travelType: 'Package', inquiryType: 'Incoming Call', priority: 'High' },
-  { id: 2, name: 'Priya Singh', phone: '+91 87654 32109', email: 'priya@gmail.com', destination: 'Maldives 5N', source: 'Facebook', status: 'Follow-up', stage: 'Warm', agent: 'Mike R.', date: '2026-03-27', budget: '$3,800', travelType: 'Package', inquiryType: 'Form', priority: 'High' },
-  { id: 3, name: 'John Davis', phone: '+1 555 0134', email: 'john@email.com', destination: 'Europe Tour', source: 'Website', status: 'Booked', stage: 'Hot', agent: 'Sarah J.', date: '2026-03-26', budget: '$5,200', travelType: 'Package', inquiryType: 'Form', priority: 'Medium' },
-  { id: 4, name: 'Aisha Khan', phone: '+91 76543 21098', email: 'aisha@gmail.com', destination: 'Singapore', source: 'Referral', status: 'New', stage: 'Cold', agent: 'Tom K.', date: '2026-03-26', budget: '$1,800', travelType: 'Flight', inquiryType: 'WhatsApp', priority: 'Medium' },
-  { id: 5, name: 'Mike Thompson', phone: '+1 555 0198', email: 'mike@email.com', destination: 'Thailand 7N', source: 'Google Ads', status: 'Cold', stage: 'Cold', agent: 'Mike R.', date: '2026-03-25', budget: '$2,100', travelType: 'Package', inquiryType: 'Incoming Call', priority: 'Low' },
-  { id: 6, name: 'Fatima Ali', phone: '+971 50 123 4567', email: 'fatima@email.com', destination: 'Bali Trip', source: 'Instagram', status: 'Hot Lead', stage: 'Hot', agent: 'Sarah J.', date: '2026-03-25', budget: '$2,900', travelType: 'Package', inquiryType: 'WhatsApp', priority: 'High' },
-  { id: 7, name: 'David Lee', phone: '+1 555 0267', email: 'david@email.com', destination: 'Japan 10D', source: 'Website', status: 'New', stage: 'Warm', agent: 'Tom K.', date: '2026-03-24', budget: '$4,600', travelType: 'Package', inquiryType: 'Form', priority: 'Medium' },
-];
-
-const emptyLead = {
-  // Section 1 – Basic Info
-  name: '', phone: '', altPhone: '', email: '', country: '', state: '',
-  preferredLanguage: '', passportAvailable: '',
-  // Section 2 – Travel Requirements
-  destination: '', departureCity: '', travelDateStart: '', travelDateReturn: '',
-  flexibleDates: '', adults: '1', children: '0', infants: '0',
-  travelType: 'Package', budget: '', hotelCategory: '', mealPreference: '',
-  specialRequirements: [],
-  // Section 3 – Lead Source
-  source: 'Website', campaignName: '', adGroupKeyword: '', landingPageUrl: '',
-  referrerUrl: '', ipAddress: '', deviceType: '',
-  utmSource: '', utmMedium: '', utmCampaign: '',
-  // Section 4 – Call & Inquiry
-  inquiryType: 'Incoming Call', callStatus: '', callDuration: '',
-  callRecordingLink: '', inquiryNotes: '',
-  // Section 5 – Lead Assignment
-  agent: '', assignmentType: 'Manual', priority: 'Medium', leadScore: '',
-  // Section 6 – Status & Pipeline
-  status: 'New', stage: 'Cold', expectedConversionDate: '',
-  // Section 7 – Follow-up
-  followUpDate: '', followUpTime: '', followUpType: 'Call', reminderSet: 'No', followUpNotes: '',
-};
 
 const statusColors = {
   'Hot Lead': 'bg-red-100 text-red-700',
@@ -104,11 +74,12 @@ const Field = ({ label, required, children }) => (
 );
 
 export default function Leads() {
-  const [leads, setLeads] = useState(initialLeads);
+  const leads = useStoreList(leadStore);
+  const { user } = useAuth();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
   const [showAdd, setShowAdd] = useState(false);
-  const [newLead, setNewLead] = useState(emptyLead);
+  const [newLead, setNewLead] = useState(emptyLead());
 
   const set = (key, val) => setNewLead(p => ({ ...p, [key]: val }));
   const toggleSpecial = (val) => setNewLead(p => ({
@@ -125,15 +96,15 @@ export default function Leads() {
     return matchSearch && matchStatus;
   });
 
-  const addLead = () => {
+  const addLead = async () => {
     if (!newLead.name || !newLead.phone) return;
-    setLeads(prev => [{
-      ...newLead,
-      id: Date.now(),
-      date: new Date().toISOString().split('T')[0],
-    }, ...prev]);
-    setNewLead(emptyLead);
+    const record = leadStore.create({ ...newLead, agent: newLead.agent || user?.name || '' });
+    setNewLead(emptyLead());
     setShowAdd(false);
+
+    const result = await postToSheet('leads', record);
+    if (result === 'sent') leadStore.markSynced(record.id);
+    else leadStore.markUnsynced(record.id);
   };
 
   const inp = 'input-field text-sm py-2';
@@ -537,7 +508,7 @@ export default function Leads() {
 
             {/* Modal Footer */}
             <div className="px-6 py-4 border-t border-gray-100 flex gap-3 flex-shrink-0 bg-gray-50 rounded-b-2xl">
-              <button onClick={() => { setNewLead(emptyLead); setShowAdd(false); }} className="btn-outline flex-1 py-2.5 text-sm">
+              <button onClick={() => { setNewLead(emptyLead()); setShowAdd(false); }} className="btn-outline flex-1 py-2.5 text-sm">
                 Cancel
               </button>
               <button onClick={addLead} className="btn-primary flex-1 py-2.5 text-sm" disabled={!newLead.name || !newLead.phone}>
