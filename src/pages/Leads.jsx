@@ -1,9 +1,14 @@
 import { useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import DashboardLayout from '../components/DashboardLayout';
+import EntryOnlyPanel from '../components/EntryOnlyPanel';
 import { emptyLead, leadStore } from '../lib/leads';
 import { postToSheet } from '../lib/sheetClient';
 import { useStoreList } from '../hooks/useStore';
+import { useAgents } from '../hooks/useAgents';
 import { useAuth } from '../context/AuthContext';
+
+const icLeads = 'M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2M9 11a4 4 0 100-8 4 4 0 000 8zM23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75';
 
 const countryStates = {
   'India': ['Andhra Pradesh','Arunachal Pradesh','Assam','Bihar','Chhattisgarh','Goa','Gujarat','Haryana','Himachal Pradesh','Jharkhand','Karnataka','Kerala','Madhya Pradesh','Maharashtra','Manipur','Meghalaya','Mizoram','Nagaland','Odisha','Punjab','Rajasthan','Sikkim','Tamil Nadu','Telangana','Tripura','Uttar Pradesh','Uttarakhand','West Bengal','Delhi','Jammu & Kashmir','Ladakh'],
@@ -75,11 +80,18 @@ const Field = ({ label, required, children }) => (
 
 export default function Leads() {
   const leads = useStoreList(leadStore);
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
+  const { users: teamUsers } = useAgents();
+  const location = useLocation();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
-  const [showAdd, setShowAdd] = useState(false);
+  // AgentHome links here with state.openEntry so the form opens straight away.
+  const [showAdd, setShowAdd] = useState(() => !!location.state?.openEntry);
   const [newLead, setNewLead] = useState(emptyLead());
+  // Set while the modal is editing an existing lead rather than adding one.
+  const [editingId, setEditingId] = useState(null);
+  const [savedCount, setSavedCount] = useState(0);
+  const [lastResult, setLastResult] = useState(null);
 
   const set = (key, val) => setNewLead(p => ({ ...p, [key]: val }));
   const toggleSpecial = (val) => setNewLead(p => ({
@@ -96,22 +108,41 @@ export default function Leads() {
     return matchSearch && matchStatus;
   });
 
-  const addLead = async () => {
+  const closeModal = () => { setNewLead(emptyLead()); setEditingId(null); setShowAdd(false); };
+
+  const openEdit = (lead) => {
+    // Merge over a blank lead so fields added since the row was saved still exist.
+    setNewLead({ ...emptyLead(), ...lead });
+    setEditingId(lead.id);
+    setShowAdd(true);
+  };
+
+  const saveLead = async () => {
     if (!newLead.name || !newLead.phone) return;
-    const record = leadStore.create({ ...newLead, agent: newLead.agent || user?.name || '' });
-    setNewLead(emptyLead());
-    setShowAdd(false);
+    const draft = { ...newLead, agent: newLead.agent || user?.name || '' };
+    // The sheet upserts on id, so an edit is the same POST as an add.
+    const record = editingId ? leadStore.update(editingId, draft) : leadStore.create(draft);
+    closeModal();
 
     const result = await postToSheet('leads', record);
     if (result === 'sent') leadStore.markSynced(record.id);
     else leadStore.markUnsynced(record.id);
+    setSavedCount(c => c + 1);
+    setLastResult(result);
   };
 
   const inp = 'input-field text-sm py-2';
   const sel = 'input-field text-sm py-2';
 
   return (
-    <DashboardLayout title="Leads" subtitle="Manage and track all incoming leads">
+    <DashboardLayout title="Leads" subtitle={isAdmin ? 'Manage and track all incoming leads' : 'Capture a new enquiry'}>
+      {!isAdmin && (
+        <EntryOnlyPanel icon={icLeads} title="Add a Lead" buttonLabel="Add Lead"
+          description="Fill in the enquiry details below. The lead is filed under your name and lands in the admin's register."
+          onNew={() => setShowAdd(true)} savedCount={savedCount} lastResult={lastResult} />
+      )}
+
+      {isAdmin && <>
       {/* Stats row */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">
         {[
@@ -193,10 +224,7 @@ export default function Leads() {
                   <td className="table-cell font-semibold text-gray-700">{lead.budget}</td>
                   <td className="table-cell text-gray-400">{lead.date}</td>
                   <td className="table-cell">
-                    <div className="flex gap-2">
-                      <button className="text-primary-600 hover:text-primary-700 text-xs font-semibold">Edit</button>
-                      <button className="text-accent-600 hover:text-accent-700 text-xs font-semibold">Call</button>
-                    </div>
+                    <button onClick={() => openEdit(lead)} className="text-primary-600 hover:text-primary-700 text-xs font-semibold">Edit</button>
                   </td>
                 </tr>
               ))}
@@ -212,6 +240,7 @@ export default function Leads() {
           )}
         </div>
       </div>
+      </>}
 
       {/* ── ADD LEAD MODAL ───────────────────────────────────────── */}
       {showAdd && (
@@ -221,10 +250,10 @@ export default function Leads() {
             {/* Modal Header */}
             <div className="travel-gradient rounded-t-2xl px-6 py-4 flex items-center justify-between flex-shrink-0">
               <div>
-                <h3 className="text-white font-bold text-lg">Add New Lead</h3>
-                <p className="text-blue-100 text-xs">Fill all sections to capture complete lead details</p>
+                <h3 className="text-white font-bold text-lg">{editingId ? 'Edit Lead' : 'Add New Lead'}</h3>
+                <p className="text-blue-100 text-xs">{editingId ? `Updating ${newLead.name}` : 'Fill all sections to capture complete lead details'}</p>
               </div>
-              <button onClick={() => setShowAdd(false)} className="text-white/70 hover:text-white w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white/10 transition-colors text-xl font-light">×</button>
+              <button onClick={closeModal} className="text-white/70 hover:text-white w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white/10 transition-colors text-xl font-light">×</button>
             </div>
 
             {/* Scrollable Body */}
@@ -429,10 +458,17 @@ export default function Leads() {
                 <SectionHeader number="5" title="Lead Assignment" subtitle="Who will handle this lead?" color="green" />
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <Field label="Assign To (Agent)">
-                    <select className={sel} value={newLead.agent} onChange={e => set('agent', e.target.value)}>
-                      <option value="">Select Agent</option>
-                      {['Sarah J.', 'Mike R.', 'Tom K.', 'Lisa P.', 'David M.'].map(a => <option key={a}>{a}</option>)}
-                    </select>
+                    {!isAdmin ? (
+                      <input className={inp} value={user?.name || ''} disabled title="Entries are always filed under your own name" />
+                    ) : teamUsers.length > 0 ? (
+                      <select className={sel} value={newLead.agent} onChange={e => set('agent', e.target.value)}>
+                        <option value="">Select Agent</option>
+                        {teamUsers.filter(u => u.status === 'Active').map(u => <option key={u.id} value={u.name}>{u.name}</option>)}
+                        {newLead.agent && !teamUsers.some(u => u.name === newLead.agent) && <option value={newLead.agent}>{newLead.agent}</option>}
+                      </select>
+                    ) : (
+                      <input className={inp} value={newLead.agent} onChange={e => set('agent', e.target.value)} placeholder="Agent name" />
+                    )}
                   </Field>
                   <Field label="Assignment Type">
                     <select className={sel} value={newLead.assignmentType} onChange={e => set('assignmentType', e.target.value)}>
@@ -508,11 +544,11 @@ export default function Leads() {
 
             {/* Modal Footer */}
             <div className="px-6 py-4 border-t border-gray-100 flex gap-3 flex-shrink-0 bg-gray-50 rounded-b-2xl">
-              <button onClick={() => { setNewLead(emptyLead()); setShowAdd(false); }} className="btn-outline flex-1 py-2.5 text-sm">
+              <button onClick={closeModal} className="btn-outline flex-1 py-2.5 text-sm">
                 Cancel
               </button>
-              <button onClick={addLead} className="btn-primary flex-1 py-2.5 text-sm" disabled={!newLead.name || !newLead.phone}>
-                Save Lead
+              <button onClick={saveLead} className="btn-primary flex-1 py-2.5 text-sm" disabled={!newLead.name || !newLead.phone}>
+                {editingId ? 'Save Changes' : 'Save Lead'}
               </button>
             </div>
           </div>

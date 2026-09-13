@@ -1,5 +1,5 @@
 import { createStore, makeId } from './store';
-import { text } from './sheetClient';
+import { text, postRecord } from './sheetClient';
 
 export const bookingStore = createStore({
   storageKey: 'travel_crm_bookings',
@@ -17,7 +17,33 @@ export const BOOKING_FIELDS = [
   'agencyFee', 'merchantFee', 'grandTotal', 'remarks', 'disposition', 'agent',
 ];
 
-/** Next sequential human-friendly booking id — what an agent reads out over the phone. */
+/**
+ * Files a new booking. It is saved locally at once under a provisional id so
+ * the screen updates instantly, then re-keyed to the id the sheet assigns
+ * (the sheet is the only place that can hand out RZ##### ids safely — see
+ * nextBookingId in google-apps-script.gs). Resolves to { status, id } where
+ * `id` is the one to show the customer / link the call to.
+ */
+export async function fileBooking(draft) {
+  const provisionalId = nextBookingId(bookingStore.all());
+  const booking = bookingStore.create({ ...draft, id: provisionalId });
+
+  const { status, id } = await postRecord('bookings', { ...booking, id: '' });
+  if (status !== 'sent') {
+    bookingStore.markUnsynced(provisionalId);
+    return { status, id: provisionalId };
+  }
+
+  const finalId = id || provisionalId;
+  if (finalId !== provisionalId) {
+    bookingStore.remove(provisionalId);
+    bookingStore.create({ ...booking, id: finalId });
+  }
+  bookingStore.markSynced(finalId);
+  return { status, id: finalId };
+}
+
+/** Provisional local booking id — only until fileBooking() learns the real one from the sheet. */
 export function nextBookingId(rows) {
   const highest = rows
     .map((r) => Number(String(r.id || '').replace(/^RZ/i, '')))

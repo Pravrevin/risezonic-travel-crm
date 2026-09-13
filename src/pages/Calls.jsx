@@ -1,10 +1,12 @@
 import { useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import DashboardLayout from '../components/DashboardLayout';
+import EntryOnlyPanel from '../components/EntryOnlyPanel';
 import BookingFields from '../components/BookingFields';
 import BookingDetailModal from '../components/BookingDetailModal';
 import { useBookingForm, buildBookingPayload } from '../hooks/useBookingForm';
 import { callStore } from '../lib/calls';
-import { bookingStore, nextBookingId } from '../lib/bookings';
+import { bookingStore, fileBooking } from '../lib/bookings';
 import { postToSheet } from '../lib/sheetClient';
 import { useStoreList } from '../hooks/useStore';
 import { DISPOSITIONS, DISPOSITION_COLORS } from '../constants/dispositions';
@@ -21,8 +23,11 @@ const icCheck = 'M20 6L9 17l-5-5';
 
 export default function Calls() {
   const calls = useStoreList(callStore);
-  const { user } = useAuth();
-  const [showEntry, setShowEntry] = useState(false);
+  const { user, isAdmin } = useAuth();
+  const location = useLocation();
+  const [showEntry, setShowEntry] = useState(() => !!location.state?.openEntry);
+  const [savedCount, setSavedCount] = useState(0);
+  const [lastResult, setLastResult] = useState(null);
   const [viewCall, setViewCall] = useState(null);
   const [viewBookingId, setViewBookingId] = useState(null);
   const [saving, setSaving] = useState(false);
@@ -51,12 +56,7 @@ export default function Calls() {
     let bookingId = null;
     if (isNewBooking) {
       const payload = buildBookingPayload(bookingForm.form, bookingForm.fare);
-      const id = nextBookingId(bookingStore.all());
-      const booking = bookingStore.create({ ...payload, id, disposition, agent: user?.name || 'Agent' });
-      const result = await postToSheet('bookings', booking);
-      if (result === 'sent') bookingStore.markSynced(booking.id);
-      else bookingStore.markUnsynced(booking.id);
-      bookingId = booking.id;
+      bookingId = (await fileBooking({ ...payload, disposition, agent: user?.name || 'Agent' })).id;
     }
 
     const bookingName = `${bookingForm.form.firstName} ${bookingForm.form.lastName}`.trim();
@@ -73,6 +73,8 @@ export default function Calls() {
     if (callResult === 'sent') callStore.markSynced(call.id);
     else callStore.markUnsynced(call.id);
 
+    setSavedCount(c => c + 1);
+    setLastResult(callResult);
     setSaving(false);
     closeEntry();
   };
@@ -88,6 +90,13 @@ export default function Calls() {
 
   return (
     <DashboardLayout title="Calls" subtitle="Log every call with a disposition and remarks">
+      {!isAdmin && (
+        <EntryOnlyPanel icon={icPhone} title="Log a Call" buttonLabel="New Call Entry"
+          description="Pick the disposition, add remarks, and attach a booking if one was made on the call."
+          onNew={() => setShowEntry(true)} savedCount={savedCount} lastResult={lastResult} />
+      )}
+
+      {isAdmin && <>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         {stats.map((s, i) => (
           <div key={i} className={`${s.color} rounded-2xl p-4 flex items-center gap-3`}>
@@ -153,6 +162,7 @@ export default function Calls() {
           </table>
         </div>
       </div>
+      </>}
 
       {/* ── NEW CALL ENTRY MODAL ─────────────────────────────────── */}
       {showEntry && (

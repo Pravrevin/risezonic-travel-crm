@@ -15,7 +15,7 @@
 // just don't leave this browser. If you ever create a NEW deployment (a new
 // URL), change it ONLY here.
 export const GOOGLE_SCRIPT_URL =
-  'https://script.google.com/macros/s/AKfycbwuIKRFVa3WUUX7ySFE1i5ny5pXxfwnu_aWeAmAj5oeBM1NvsWZLUDfaD2nIZjBvSs_dA/exec';
+  'https://script.google.com/macros/s/AKfycbx2bt9WtsJHOtqrL-S0-1yqhfPzI3V3KMuPzKJGCfdhX0cRHrsjtdZTafmHM2oMHs0UOw/exec';
 
 /** False until the URL above has been replaced with a real deployment. */
 export const isSheetConfigured = () => GOOGLE_SCRIPT_URL.startsWith('https://script.google.com/');

@@ -10,6 +10,7 @@ const NavIcon = ({ d, size = 18 }) => (
   </svg>
 );
 
+// `admin: true` items are hidden from Agent logins, who only file entries.
 const navItems = [
   {
     label: 'Dashboard', path: '/dashboard',
@@ -24,12 +25,16 @@ const navItems = [
     icon: 'M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 9.72 19.79 19.79 0 01.11 1.18 2 2 0 012.11 0h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.91 7.09a16 16 0 006 6l.46-.45a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z',
   },
   {
-    label: 'Follow-ups', path: '/followups',
+    label: 'Follow-ups', path: '/followups', admin: true,
     icon: ['M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9', 'M13.73 21a2 2 0 01-3.46 0'],
   },
   {
     label: 'Bookings', path: '/bookings',
     icon: 'M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z',
+  },
+  {
+    label: 'Agents', path: '/agents', admin: true,
+    icon: ['M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2', 'M9 11a4 4 0 100-8 4 4 0 000 8z', 'M19 8v6', 'M22 11h-6'],
   },
 ];
 
@@ -67,8 +72,9 @@ const PlaneIcon = () => (
 export default function DashboardLayout({ children, title, subtitle }) {
   const [collapsed, setCollapsed] = useState(() => localStorage.getItem('travel_crm_sidebar') === 'true');
   const [mobileOpen, setMobileOpen] = useState(false);
-  const { user, logout } = useAuth();
+  const { user, logout, isAdmin } = useAuth();
   const location = useLocation();
+  const visibleNav = navItems.filter(item => !item.admin || isAdmin);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -101,7 +107,7 @@ export default function DashboardLayout({ children, title, subtitle }) {
 
       {/* Nav */}
       <nav className="flex-1 px-3 py-3 overflow-y-auto scrollbar-hide space-y-0.5">
-        {navItems.map(item => {
+        {visibleNav.map(item => {
           const isActive = location.pathname === item.path;
           return (
             <Link

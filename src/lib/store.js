@@ -111,6 +111,10 @@ export function createStore({ storageKey, dirtyKey, makeId }) {
       if (!ids.delete(id)) return;
       writeDirty(ids);
     },
+    /** True while any record is still waiting to reach the sheet. */
+    hasUnsynced() {
+      return dirtyIds().size > 0;
+    },
     reset() {
       commit([]);
     },

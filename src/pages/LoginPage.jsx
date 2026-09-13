@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { isSheetConfigured } from '../lib/scriptUrl';
 
 const Sv = ({ d, size = 20, color = 'currentColor', sw = 1.8 }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round">
@@ -18,8 +19,8 @@ const ic = {
 };
 
 export default function LoginPage() {
-  const [email, setEmail] = useState('admin@risezonic.com');
-  const [password, setPassword] = useState('demo123');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const { login } = useAuth();
@@ -92,16 +93,19 @@ export default function LoginPage() {
               </div>
             )}
 
-            <div className="bg-primary-50 border border-primary-100 rounded-xl p-4 mb-6">
-              <div className="flex items-center gap-2 mb-2">
-                <span className="text-primary-600 font-semibold text-sm">Demo Credentials</span>
-                <span className="badge bg-primary-100 text-primary-700">Try it free</span>
+            {!isSheetConfigured() && (
+              <div className="bg-primary-50 border border-primary-100 rounded-xl p-4 mb-6">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-primary-600 font-semibold text-sm">Demo Credentials</span>
+                  <span className="badge bg-primary-100 text-primary-700">Backend not configured</span>
+                </div>
+                <div className="text-xs text-gray-500 space-y-1">
+                  <div><span className="font-medium">Admin:</span> admin@risezonic.com</div>
+                  <div><span className="font-medium">Agent:</span> demo@risezonic.com</div>
+                  <div><span className="font-medium">Password:</span> demo123</div>
+                </div>
               </div>
-              <div className="text-xs text-gray-500 space-y-1">
-                <div><span className="font-medium">Email:</span> admin@risezonic.com</div>
-                <div><span className="font-medium">Password:</span> demo123</div>
-              </div>
-            </div>
+            )}
 
             <form onSubmit={handleSubmit} className="space-y-5">
               <div>

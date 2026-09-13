@@ -1,10 +1,11 @@
 import { useState, useMemo } from 'react';
+import { useLocation } from 'react-router-dom';
 import DashboardLayout from '../components/DashboardLayout';
+import EntryOnlyPanel from '../components/EntryOnlyPanel';
 import BookingFields from '../components/BookingFields';
 import BookingDetailModal from '../components/BookingDetailModal';
 import { useBookingForm, buildBookingPayload } from '../hooks/useBookingForm';
-import { bookingStore, nextBookingId } from '../lib/bookings';
-import { postToSheet } from '../lib/sheetClient';
+import { bookingStore, fileBooking } from '../lib/bookings';
 import { useStoreList } from '../hooks/useStore';
 import { useAuth } from '../context/AuthContext';
 
@@ -20,10 +21,13 @@ const SEARCH_TYPES = ['Booking ID', 'Airline PNR', 'Email ID'];
 
 export default function Bookings() {
   const bookings = useStoreList(bookingStore);
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
+  const location = useLocation();
   const [searchType, setSearchType] = useState('Booking ID');
   const [query, setQuery] = useState('');
-  const [showAdd, setShowAdd] = useState(false);
+  const [showAdd, setShowAdd] = useState(() => !!location.state?.openEntry);
+  const [savedCount, setSavedCount] = useState(0);
+  const [lastResult, setLastResult] = useState(null);
   const [viewBooking, setViewBooking] = useState(null);
   const [saving, setSaving] = useState(false);
 
@@ -44,21 +48,24 @@ export default function Bookings() {
     if (!bookingForm.isValid || saving) return;
     setSaving(true);
     const payload = buildBookingPayload(bookingForm.form, bookingForm.fare);
-    const id = nextBookingId(bookingStore.all());
-    const booking = bookingStore.create({ ...payload, id, disposition: 'New booking', agent: user?.name || 'Agent' });
+    const { status } = await fileBooking({ ...payload, disposition: 'New booking', agent: user?.name || 'Agent' });
 
-    const result = await postToSheet('bookings', booking);
-    if (result === 'sent') bookingStore.markSynced(booking.id);
-    else bookingStore.markUnsynced(booking.id);
-
+    setSavedCount(c => c + 1);
+    setLastResult(status);
     setSaving(false);
     bookingForm.reset();
     setShowAdd(false);
   };
 
   return (
-    <DashboardLayout title="Bookings" subtitle="Look up an existing reservation or create a new one">
+    <DashboardLayout title="Bookings" subtitle={isAdmin ? 'Look up an existing reservation or create a new one' : 'Enter a confirmed booking'}>
+      {!isAdmin && (
+        <EntryOnlyPanel icon={icPlane} title="New Booking" buttonLabel="New Booking"
+          description="Enter the passenger, flight and payment details. A booking ID is generated automatically."
+          onNew={() => setShowAdd(true)} savedCount={savedCount} lastResult={lastResult} />
+      )}
 
+      {isAdmin && <>
       <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-6">
         <div className="bg-blue-50 text-blue-700 rounded-2xl p-4 flex items-center gap-3">
           <div className="w-9 h-9 rounded-xl bg-white/60 flex items-center justify-center flex-shrink-0"><Sv d={icPlane} size={17} color="#2563eb" /></div>
@@ -142,6 +149,7 @@ export default function Bookings() {
           </div>
         )}
       </div>
+      </>}
 
       {/* New Booking Modal */}
       {showAdd && (

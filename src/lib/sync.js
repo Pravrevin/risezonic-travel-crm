@@ -27,3 +27,17 @@ export async function pullFromSheet() {
 
   return data;
 }
+
+const ALL_STORES = [leadStore, callStore, bookingStore, followupStore];
+
+/**
+ * Empties the cached registers on logout so the next person to sign in on
+ * this browser (an agent, say) doesn't inherit an admin's data. A store that
+ * still has records waiting to reach the sheet is left alone — clearing it
+ * would lose real entries.
+ */
+export function clearLocalRegisters() {
+  ALL_STORES.forEach((store) => {
+    if (!store.hasUnsynced()) store.reset();
+  });
+}

@@ -1,4 +1,5 @@
 import { GOOGLE_SCRIPT_URL, isSheetConfigured } from './scriptUrl';
+import { getToken } from './auth';
 
 export const TABLES = ['leads', 'calls', 'bookings', 'followups'];
 
@@ -17,26 +18,38 @@ export const TABLES = ['leads', 'calls', 'bookings', 'followups'];
  * reads e.postData.contents regardless of the declared content type.
  */
 export async function postToSheet(table, payload) {
-  if (!isSheetConfigured()) return 'not-configured';
+  return (await postRecord(table, payload)).status;
+}
+
+/**
+ * Like postToSheet, but also returns the record id the script settled on.
+ * Only bookings care: send `id: ''` and the script assigns the next RZ#####.
+ */
+export async function postRecord(table, payload) {
+  if (!isSheetConfigured()) return { status: 'not-configured', id: payload.id };
 
   try {
     const response = await fetch(GOOGLE_SCRIPT_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify({ table, ...payload }),
+      body: JSON.stringify({ table, ...payload, token: getToken() }),
       redirect: 'follow',
     });
-    if (!response.ok) return 'failed';
+    if (!response.ok) return { status: 'failed', id: payload.id };
 
     const data = await response.json().catch(() => null);
-    return data?.success ? 'sent' : 'failed';
+    if (!data?.success) return { status: 'failed', id: payload.id };
+    return { status: 'sent', id: data.id || payload.id };
   } catch {
-    return 'failed';
+    return { status: 'failed', id: payload.id };
   }
 }
 
 /**
  * Loads every tab (leads, calls, bookings, follow-ups) in one request.
+ *
+ * Admin only: the script refuses the read for an Agent token, so an agent's
+ * browser never holds anyone else's records.
  *
  * This is what makes the CRM work once deployed anywhere other than this
  * browser: localStorage is per-origin, so a fresh browser or a teammate's
@@ -47,7 +60,7 @@ export async function fetchAllFromSheet() {
   if (!isSheetConfigured()) return null;
 
   try {
-    const response = await fetch(`${GOOGLE_SCRIPT_URL}?action=all`, {
+    const response = await fetch(`${GOOGLE_SCRIPT_URL}?action=all&token=${encodeURIComponent(getToken())}`, {
       method: 'GET',
       redirect: 'follow',
     });

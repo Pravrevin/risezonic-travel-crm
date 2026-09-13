@@ -9,6 +9,8 @@ import Leads from './pages/Leads';
 import Calls from './pages/Calls';
 import Followups from './pages/Followups';
 import Bookings from './pages/Bookings';
+import Agents from './pages/Agents';
+import AgentHome from './pages/AgentHome';
 
 const PrivateRoute = ({ children }) => {
   const { isAuthenticated, loading } = useAuth();
@@ -25,6 +27,12 @@ const PrivateRoute = ({ children }) => {
   return isAuthenticated ? children : <Navigate to="/login" replace />;
 };
 
+/** Admin-only screen: agents are bounced to their entry hub. */
+const AdminRoute = ({ children }) => {
+  const { isAdmin } = useAuth();
+  return isAdmin ? children : <Navigate to="/dashboard" replace />;
+};
+
 const PublicRoute = ({ children }) => {
   const { isAuthenticated, loading } = useAuth();
   if (loading) return null;
@@ -32,25 +40,28 @@ const PublicRoute = ({ children }) => {
 };
 
 const AppRoutes = () => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, isAdmin } = useAuth();
 
-  // Pull the register from the Google Sheet once signed in. localStorage is
-  // per-origin, so without this a fresh browser or teammate's machine would
-  // otherwise start empty even though the records exist in the sheet.
+  // Pull the register from the Google Sheet once an admin signs in.
+  // localStorage is per-origin, so without this a fresh browser or teammate's
+  // machine would otherwise start empty even though the records exist in the
+  // sheet. Agents only file entries and never receive the register — the
+  // script would refuse the read anyway.
   useEffect(() => {
-    if (!isAuthenticated) return;
+    if (!isAuthenticated || !isAdmin) return;
     pullFromSheet();
-  }, [isAuthenticated]);
+  }, [isAuthenticated, isAdmin]);
 
   return (
     <Routes>
       <Route path="/" element={<LandingPage />} />
       <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
-      <Route path="/dashboard" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
+      <Route path="/dashboard" element={<PrivateRoute>{isAdmin ? <Dashboard /> : <AgentHome />}</PrivateRoute>} />
       <Route path="/leads" element={<PrivateRoute><Leads /></PrivateRoute>} />
       <Route path="/calls" element={<PrivateRoute><Calls /></PrivateRoute>} />
-      <Route path="/followups" element={<PrivateRoute><Followups /></PrivateRoute>} />
+      <Route path="/followups" element={<PrivateRoute><AdminRoute><Followups /></AdminRoute></PrivateRoute>} />
       <Route path="/bookings" element={<PrivateRoute><Bookings /></PrivateRoute>} />
+      <Route path="/agents" element={<PrivateRoute><AdminRoute><Agents /></AdminRoute></PrivateRoute>} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
